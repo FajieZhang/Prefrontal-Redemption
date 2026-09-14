@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>哔哩哔哩</title>
+  
+  <!-- PWA & Mobile Web App Meta -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#FB7299">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="哔哩哔哩">
+  
+  <!-- Apple Touch Icons & Favicons -->
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="shortcut icon" href="favicon.png">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Background ambient glow & particles -->
+  <div class="ambient-glow"></div>
+  <canvas id="canvas-particles"></canvas>
+
+  <div class="app-container">
+    <!-- Top Bar -->
+    <header class="top-nav">
+      <div class="disguise-badge" id="btn-cam-indicator" title="当前伪装应用">
+        <span class="app-dot"></span>
+        <span id="current-disguise-name">哔哩哔哩</span>
+      </div>
+
+      <div class="nav-actions">
+        <button id="btn-sound" class="icon-btn" aria-label="声音开关" title="正念音效">
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+        </button>
+        <button id="btn-stats" class="icon-btn" aria-label="数据战报" title="自制战报">
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 20V10"></path>
+            <path d="M12 20V4"></path>
+            <path d="M6 20v-6"></path>
+          </svg>
+        </button>
+        <button id="btn-guide" class="icon-btn" aria-label="桌面添加指南" title="添加到手机主屏幕">
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="5" y="2" width="14" height="20" rx="3"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"></line>
+          </svg>
+        </button>
+        <button id="btn-settings" class="icon-btn" aria-label="设置" title="系统设置">
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Browser Banner (shown only when opened in browser instead of standalone PWA) -->
+    <aside id="banner-pwa-tip" class="pwa-install-banner">
+      <div class="banner-text">
+        <span class="banner-icon">📱</span>
+        <span>将此应用<strong>添加到手机主屏幕</strong>，即可用它替代原短视频图标</span>
+      </div>
+      <button id="btn-show-guide-banner" class="banner-action">查看教程</button>
+      <button id="btn-dismiss-banner" class="banner-close" aria-label="关闭">&times;</button>
+    </aside>
+
+    <!-- Main Intervention Flow Container -->
+    <main class="intervention-workspace" id="intervention-root">
+      
+      <!-- Phase Status Bar & Counter -->
+      <section class="status-indicator">
+        <span id="phase-badge" class="phase-tag">第 1 阶段 · 神经阻断</span>
+        <div class="countdown-bar-container">
+          <div id="countdown-bar" class="countdown-bar"></div>
+        </div>
+        <span id="timer-text" class="timer-display">3s</span>
+      </section>
+
+      <!-- Center Stage: Dynamic Content based on phase -->
+      <section class="center-stage">
+        
+        <!-- Phase 1: Breathing Ring & Grounding Circle -->
+        <div id="phase-1-breathing" class="phase-container active">
+          <div class="breathing-stage">
+            <div class="ring ring-outer"></div>
+            <div class="ring ring-middle"></div>
+            <div class="ring ring-core">
+              <div class="breathing-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+              </div>
+              <span id="breath-text" class="breath-state-text">深吸气...</span>
+              <span id="breath-sub-timer" class="breath-sub-timer">6s</span>
+            </div>
+          </div>
+          <div class="breath-steps-indicator">
+            <span class="step-dot active" id="dot-inhale">吸气 6s</span>
+            <span class="step-dot" id="dot-hold">屏息 6s</span>
+            <span class="step-dot" id="dot-exhale">呼气 6s</span>
+          </div>
+          <p class="phase-subtext">给前额叶足够的时间 · 遵循 6-6-6 正念深呼吸，重获注意力自主权</p>
+        </div>
+
+        <!-- Phase 2: Quote & Socratic Reflection -->
+        <div id="phase-2-quote" class="phase-container">
+          <div class="quote-card">
+            <div class="quote-meta-header">
+              <span id="quote-category-tag" class="theme-tag">自胜者强</span>
+              <span id="quote-verified-badge" class="verified-pill">
+                <svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12">
+                  <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+                </svg>
+                学术一手典籍核验
+              </span>
+            </div>
+
+            <div class="quote-body-wrapper">
+              <span class="quote-mark quote-mark-open">“</span>
+              <blockquote id="quote-content" class="quote-text">
+                胜人者有力，自胜者强。
+              </blockquote>
+              <span class="quote-mark quote-mark-close">”</span>
+            </div>
+
+            <div class="quote-citation">
+              <span id="quote-author" class="citation-author">老子</span>
+              <span id="quote-source" class="citation-work">《道德经·第三十三章》</span>
+            </div>
+
+            <!-- Socratic Reflection Card -->
+            <div class="reflection-box">
+              <div class="reflection-header">
+                <span class="socratic-icon">🤔</span>
+                <span class="reflection-title">苏格拉底式自省</span>
+              </div>
+              <p id="reflection-prompt" class="reflection-content">
+                滑动屏幕是手指的本能，但停下来才是真正掌控自我的力量。你现在能赢过无意识的冲动吗？
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resolution Screen (Shown after user makes a choice) -->
+        <div id="resolution-screen" class="phase-container">
+          <div class="celebration-box">
+            <div class="celebration-icon">🌱</div>
+            <h2 id="resolution-title" class="resolution-heading">专注当下，心智归位</h2>
+            <p id="resolution-desc" class="resolution-p">
+              你刚刚成功抵御了一次无意识的算法诱惑。<br>
+              去投入真实的生活吧，每一次克制都在重塑强大的大脑。
+            </p>
+            <div class="mini-stat-card">
+              <div class="mini-stat-item">
+                <span class="stat-num" id="stat-today-count">1</span>
+                <span class="stat-label">今日战胜次数</span>
+              </div>
+              <div class="mini-stat-item">
+                <span class="stat-num" id="stat-total-count">1</span>
+                <span class="stat-label">累计抢回注意力</span>
+              </div>
+            </div>
+            <button id="btn-restart" class="ghost-outline-btn">再读一条典籍箴言</button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Bottom Actions (Phase 3 Choices) -->
+      <footer class="bottom-action-bar">
+        <div id="phase-locked-hint" class="action-hint active">
+          <span class="lock-icon">🔒</span>
+          <span>跟随 6-6-6 深呼吸调息，稍后即可完成觉察...</span>
+        </div>
+
+        <div id="choice-buttons" class="choice-container">
+          <!-- Primary Empowering Action -->
+          <button id="btn-resist-success" class="action-btn btn-primary" disabled>
+            <span class="btn-sparkle">✨</span>
+            <span class="btn-text">放下手机，回归现实</span>
+          </button>
+        </div>
+      </footer>
+
+    </main>
+
+    <!-- Modal: Add to Home Screen Guide -->
+    <div id="modal-guide" class="modal-overlay" role="dialog" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>📱 添加到手机桌面指南</h3>
+          <button class="close-modal-btn" data-close="modal-guide">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="tab-switch">
+            <button class="tab-btn active" data-tab="tab-ios">iPhone (Safari)</button>
+            <button class="tab-btn" data-tab="tab-android">Android (Chrome/系统浏览器)</button>
+          </div>
+
+          <div id="tab-ios" class="tab-pane active">
+            <ol class="guide-steps">
+              <li>
+                <div class="step-badge">1</div>
+                <div class="step-text">在 <strong>Safari 浏览器</strong> 中打开本页面。</div>
+              </li>
+              <li>
+                <div class="step-badge">2</div>
+                <div class="step-text">点击底部中央的 <strong>分享按钮 (带箭头的方框)</strong>。</div>
+              </li>
+              <li>
+                <div class="step-badge">3</div>
+                <div class="step-text">在弹出的菜单中向下轻扫，选择 <strong>“添加到主屏幕” (Add to Home Screen)</strong>。</div>
+              </li>
+              <li>
+                <div class="step-badge">4</div>
+                <div class="step-text">名称将默认填充为 <strong>“哔哩哔哩”</strong>，点击右上角 <strong>“添加”</strong>。</div>
+              </li>
+              <li>
+                <div class="step-badge">5</div>
+                <div class="step-text"><strong>将原本的短视频 App 移入深层文件夹</strong>，把这个戒断应用放在最容易点到的位置！</div>
+              </li>
+            </ol>
+          </div>
+
+          <div id="tab-android" class="tab-pane">
+            <ol class="guide-steps">
+              <li>
+                <div class="step-badge">1</div>
+                <div class="step-text">在 Chrome、Edge 或自带浏览器中打开本站。</div>
+              </li>
+              <li>
+                <div class="step-badge">2</div>
+                <div class="step-text">点击右上角或底部的 <strong>菜单按钮 (三个点 ··· )</strong>。</div>
+              </li>
+              <li>
+                <div class="step-badge">3</div>
+                <div class="step-text">选择 <strong>“添加到主屏幕”</strong> 或 <strong>“安装应用”</strong>。</div>
+              </li>
+              <li>
+                <div class="step-badge">4</div>
+                <div class="step-text">确认安装后，桌面将生成真实的哔哩哔哩图标，无缝融入日常！</div>
+              </li>
+            </ol>
+          </div>
+
+          <div class="tip-card">
+            💡 <strong>为什么这样有效？</strong> 习惯回路依赖无意识的触觉与视觉线索。用伪装应用截获手指肌肉记忆，每次误触时强制呼吸停顿，能彻底粉碎成瘾反射。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Statistics & War Report -->
+    <div id="modal-stats" class="modal-overlay" role="dialog" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>📊 意志力与注意自主权战报</h3>
+          <button class="close-modal-btn" data-close="modal-stats">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="stats-grid">
+            <div class="stat-box">
+              <span class="stat-metric" id="stats-total-resisted">0</span>
+              <span class="stat-title">累计阻断诱惑</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-metric" id="stats-streak-days">0</span>
+              <span class="stat-title">连续坚持天数</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-metric" id="stats-saved-time">0 分钟</span>
+              <span class="stat-title">抢救宝贵专注</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-metric" id="stats-today-resisted">0</span>
+              <span class="stat-title">今日战胜次数</span>
+            </div>
+          </div>
+
+          <h4 class="sub-heading">认知主题滋养分布</h4>
+          <div class="category-breakdown" id="category-bars">
+            <!-- Rendered by JS -->
+          </div>
+
+          <div class="stats-footer-note">
+            * 按照平均每次冲动滑动消耗 25 分钟估算注意挽救时长。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Settings & Camouflage Theme -->
+    <div id="modal-settings" class="modal-overlay" role="dialog" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>⚙️ 系统设置与伪装配置</h3>
+          <button class="close-modal-btn" data-close="modal-settings">&times;</button>
+        </div>
+        <div class="modal-body">
+          
+          <div class="settings-group">
+            <label class="settings-label">桌面入口伪装预设</label>
+            <div class="theme-options">
+              <button class="theme-option-btn active" data-app="bili">
+                <span class="app-icon-preview bili-icon"></span>
+                <span class="theme-name">哔哩哔哩 (默认)</span>
+              </button>
+              <button class="theme-option-btn" data-app="douyin">
+                <span class="app-icon-preview douyin-icon"></span>
+                <span class="theme-name">抖音</span>
+              </button>
+              <button class="theme-option-btn" data-app="xhs">
+                <span class="app-icon-preview xhs-icon"></span>
+                <span class="theme-name">小红书</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <label class="settings-label">正念深呼吸节奏模式</label>
+            <div class="segmented-control" id="breath-duration-selector">
+              <button class="segment-btn active" data-duration="18">18秒 (吸6s·屏6s·呼6s)</button>
+              <button class="segment-btn" data-duration="12">12秒 (4-4-4 快速)</button>
+              <button class="segment-btn" data-duration="24">24秒 (8-8-8 深度)</button>
+            </div>
+          </div>
+
+          <div class="settings-group toggle-row">
+            <div>
+              <div class="toggle-title">正念磬音 (Web Audio)</div>
+              <div class="toggle-desc">启动与成功时播放纯净空灵的西藏颂钵泛音</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="switch-sound" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="settings-group toggle-row">
+            <div>
+              <div class="toggle-title">触觉震动反馈</div>
+              <div class="toggle-desc">呼吸与倒计时节点轻微脉冲震动（需手机支持）</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="switch-vibrate" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="settings-group">
+            <button id="btn-reset-stats" class="danger-link-btn">清除本地统计数据</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="quotes.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

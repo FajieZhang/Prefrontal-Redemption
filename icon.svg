@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <rect width="512" height="512" rx="112" fill="#FB7299"/>
+  <!-- Antennas -->
+  <line x1="210" y1="205" x2="140" y2="115" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round"/>
+  <line x1="302" y1="205" x2="372" y2="115" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round"/>
+  <!-- TV Body -->
+  <rect x="96" y="200" width="320" height="230" rx="48" fill="#FFFFFF"/>
+  <!-- Eyes -->
+  <rect x="191" y="280" width="24" height="35" rx="12" fill="#282828"/>
+  <rect x="297" y="280" width="24" height="35" rx="12" fill="#282828"/>
+  <!-- Mouth -->
+  <path d="M 236 335 Q 256 352 276 335" stroke="#282828" stroke-width="10" stroke-linecap="round" fill="none"/>
+</svg>
