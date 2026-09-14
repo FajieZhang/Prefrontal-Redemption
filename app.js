@@ -1,6 +1,12 @@
 /**
  * 抗数字成瘾系统前端核心控制逻辑 (App.js)
- * 遵循意向实现理论、微摩擦神经阻断与自决理论三阶段交互架构
+ * 遵循意向实现理论、微摩擦神经阻断与自决理论交互架构
+ * 
+ * 核心功能：
+ * 1. 每次离开后台返回桌面后再进入时自动重置为引导/调息界面
+ * 2. Phase 0 觉察卡片（简明引导用户下意识误触行为与接下来要做的事情）
+ * 3. 三段呼吸时间自定义（吸气、屏息、呼气独立增减与主流预设芯片）
+ * 4. 1000条学术核校级典籍名言语料库防脱敏曝光算法
  */
 
 (function () {
@@ -9,12 +15,12 @@
   // --- 1. 配置与默认状态 ---
   const DEFAULT_SETTINGS = {
     camouflage: 'bili',     // 'bili' | 'douyin' | 'xhs'
-    breath_duration: 18,    // 强制深呼吸秒数 (吸6s + 屏6s + 呼6s = 18s)
+    breath_inhale: 6,       // 吸气秒数 (默认 6s)
+    breath_hold: 6,         // 屏息秒数 (默认 6s)
+    breath_exhale: 6,       // 呼气秒数 (默认 6s)
     sound: true,
     vibrate: true
   };
-
-  const TOTAL_INTERVENTION_TIME = 24; // 18s呼吸 + 6s阅读典籍名言与苏格拉底反思
 
   const CAMOUFLAGE_PRESETS = {
     bili: {
@@ -44,9 +50,24 @@
   function getSettings() {
     try {
       const saved = localStorage.getItem('zen_anti_settings');
-      return saved ? Object.assign({}, DEFAULT_SETTINGS, JSON.parse(saved)) : DEFAULT_SETTINGS;
+      let settings = saved ? Object.assign({}, DEFAULT_SETTINGS, JSON.parse(saved)) : Object.assign({}, DEFAULT_SETTINGS);
+
+      // 兼容旧版本设置平滑迁移
+      if (typeof settings.breath_inhale === 'undefined') {
+        if (settings.breath_duration) {
+          const step = Math.max(3, Math.round(settings.breath_duration / 3));
+          settings.breath_inhale = step;
+          settings.breath_hold = step;
+          settings.breath_exhale = step;
+        } else {
+          settings.breath_inhale = 6;
+          settings.breath_hold = 6;
+          settings.breath_exhale = 6;
+        }
+      }
+      return settings;
     } catch (e) {
-      return DEFAULT_SETTINGS;
+      return Object.assign({}, DEFAULT_SETTINGS);
     }
   }
 
@@ -111,7 +132,7 @@
     } catch (e) {}
   }
 
-  // --- 3. Web Audio API 正念磬音合成器 (无外部音频依赖) ---
+  // --- 3. Web Audio API 正念磬音合成器 (纯客户端，无外部依赖) ---
   let audioCtx = null;
   function getAudioContext() {
     if (!audioCtx) {
@@ -139,13 +160,12 @@
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      // 泛音和谐
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, now);
 
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.2, now + 0.08); // 柔和起音
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration); // 悠长余韵
+      gain.gain.linearRampToValueAtTime(0.2, now + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -178,7 +198,7 @@
     }
   }
 
-  // --- 4. 智能语料挑选算法 (防脱敏与分类平衡) ---
+  // --- 4. 智能语料挑选算法 (千条名言防脱敏与分类平衡) ---
   function selectOptimalQuote() {
     if (typeof QUOTES_DATABASE === 'undefined' || !QUOTES_DATABASE.length) {
       return {
@@ -192,7 +212,6 @@
     }
 
     const exposures = getExposureCounts();
-    // 找出曝光次数最少的一批语料，从中随机抽取，避免用户频繁看到同一名言
     let minExp = Infinity;
     QUOTES_DATABASE.forEach(q => {
       const exp = exposures[q.id] || 0;
@@ -235,8 +254,6 @@
 
     function render() {
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
-
       particles.forEach(p => {
         p.x += p.vx;
         p.y += p.vy;
@@ -270,16 +287,20 @@
 
   // --- 6. 核心流程状态机 ---
   let currentTimer = null;
-  let elapsedSeconds = 0;
+  let introTimer = null;
   let currentQuote = null;
+  let lastHiddenTimestamp = 0;
 
   const UI = {
     phaseBadge: document.getElementById('phase-badge'),
     countdownBar: document.getElementById('countdown-bar'),
     timerText: document.getElementById('timer-text'),
+    phaseIntro: document.getElementById('phase-0-intro'),
     phaseBreathing: document.getElementById('phase-1-breathing'),
     phaseQuote: document.getElementById('phase-2-quote'),
     phaseResolution: document.getElementById('resolution-screen'),
+    btnStartBreath: document.getElementById('btn-start-breath'),
+    introCountdownTip: document.getElementById('intro-countdown-tip'),
     breathStateText: document.getElementById('breath-text'),
     breathSubTimer: document.getElementById('breath-sub-timer'),
     dotInhale: document.getElementById('dot-inhale'),
@@ -296,7 +317,11 @@
     statTotalCount: document.getElementById('stat-total-count'),
     btnRestart: document.getElementById('btn-restart'),
     disguiseName: document.getElementById('current-disguise-name'),
-    camIndicator: document.getElementById('btn-cam-indicator')
+    camIndicator: document.getElementById('btn-cam-indicator'),
+    breathTotalPreview: document.getElementById('breath-total-preview'),
+    valInhale: document.getElementById('val-inhale'),
+    valHold: document.getElementById('val-hold'),
+    valExhale: document.getElementById('val-exhale')
   };
 
   function setBreathStep(stepIndex, remainInStep, stepDuration) {
@@ -319,34 +344,93 @@
     }
   }
 
-  function startInterventionFlow() {
+  // --- Phase 0: 觉察时刻引导卡片 ---
+  function startIntroFlow() {
     clearInterval(currentTimer);
-    elapsedSeconds = 0;
+    clearInterval(introTimer);
+
+    if (UI.phaseIntro) UI.phaseIntro.classList.add('active');
+    UI.phaseBreathing.classList.remove('active');
+    UI.phaseQuote.classList.remove('active');
+    UI.phaseResolution.classList.remove('active');
+
+    UI.phaseBadge.textContent = '觉察时刻 · 暂停本能';
+    UI.btnResistSuccess.disabled = true;
+    UI.phaseLockedHint.classList.add('active');
+    UI.phaseLockedHint.innerHTML = `<span class="lock-icon">🔒</span><span>觉察冲动停顿片刻，准备开始调息...</span>`;
 
     const settings = getSettings();
-    const breathDuration = parseInt(settings.breath_duration, 10) || 18;
-    const quoteReadDuration = 6; // 名言静读反思时间
+    const inhale = Math.max(2, parseInt(settings.breath_inhale, 10) || 6);
+    const hold = Math.max(0, parseInt(settings.breath_hold, 10) || 0);
+    const exhale = Math.max(2, parseInt(settings.breath_exhale, 10) || 6);
+
+    if (UI.dotInhale) UI.dotInhale.textContent = `吸气 ${inhale}s`;
+    if (UI.dotHold) UI.dotHold.textContent = `屏息 ${hold}s`;
+    if (UI.dotExhale) UI.dotExhale.textContent = `呼气 ${exhale}s`;
+
+    let introRemain = 3;
+    if (UI.introCountdownTip) {
+      UI.introCountdownTip.textContent = `${introRemain} 秒后将自动开始...`;
+    }
+    UI.timerText.textContent = `${introRemain}s`;
+    UI.countdownBar.style.width = '0%';
+
+    const introStart = Date.now();
+    const introTotalMs = 3500; // 3.5秒自动过渡
+
+    introTimer = setInterval(() => {
+      const elapsed = Date.now() - introStart;
+      const progress = Math.min(100, (elapsed / introTotalMs) * 100);
+      const remainSec = Math.max(1, Math.ceil((introTotalMs - elapsed) / 1000));
+
+      UI.countdownBar.style.width = `${progress}%`;
+      UI.timerText.textContent = `${remainSec}s`;
+      if (UI.introCountdownTip) {
+        UI.introCountdownTip.textContent = `${remainSec} 秒后将自动开始...`;
+      }
+
+      if (elapsed >= introTotalMs) {
+        clearInterval(introTimer);
+        startBreathingFlow();
+      }
+    }, 100);
+  }
+
+  // --- Phase 1: 3段自定义深呼吸调息 ---
+  function startBreathingFlow() {
+    clearInterval(currentTimer);
+    clearInterval(introTimer);
+
+    const settings = getSettings();
+    const inhale = Math.max(2, parseInt(settings.breath_inhale, 10) || 6);
+    const hold = Math.max(0, parseInt(settings.breath_hold, 10) || 0);
+    const exhale = Math.max(2, parseInt(settings.breath_exhale, 10) || 6);
+    const breathDuration = inhale + hold + exhale;
+    const quoteReadDuration = 6; // 典籍默读反思时间
     const totalDuration = breathDuration + quoteReadDuration;
-    const stepDuration = Math.round(breathDuration / 3);
 
     // 动态同步 CSS 呼吸动画周期
     document.documentElement.style.setProperty('--breath-total', `${breathDuration}s`);
 
-    // 准备名言
+    // 准备随机最优名言
     currentQuote = selectOptimalQuote();
     populateQuoteUI(currentQuote);
 
-    // 重置界面为第 1 阶段 (深呼吸)
+    // 切换至阶段 1
+    if (UI.phaseIntro) UI.phaseIntro.classList.remove('active');
     UI.phaseBreathing.classList.add('active');
     UI.phaseQuote.classList.remove('active');
     UI.phaseResolution.classList.remove('active');
 
     UI.phaseBadge.textContent = '第 1 阶段 · 调息阻断';
     UI.phaseLockedHint.classList.add('active');
-    UI.phaseLockedHint.innerHTML = `<span class="lock-icon">🔒</span><span>6-6-6 深呼吸调息中，重连理智前额叶...</span>`;
+    UI.phaseLockedHint.innerHTML = `<span class="lock-icon">🔒</span><span>${inhale}-${hold}-${exhale} 正念呼吸中，重连理智前额叶...</span>`;
+
+    if (UI.dotInhale) UI.dotInhale.textContent = `吸气 ${inhale}s`;
+    if (UI.dotHold) UI.dotHold.textContent = `屏息 ${hold}s`;
+    if (UI.dotExhale) UI.dotExhale.textContent = `呼气 ${exhale}s`;
 
     UI.btnResistSuccess.disabled = true;
-
     UI.countdownBar.style.width = '0%';
     UI.timerText.textContent = `${totalDuration}s`;
 
@@ -354,7 +438,7 @@
     playZenBell(432, 2.5);
     triggerHaptic([40, 60, 40]);
 
-    setBreathStep(0, stepDuration, stepDuration);
+    setBreathStep(0, inhale, inhale);
 
     let lastStep = -1;
     const startTime = Date.now();
@@ -370,9 +454,23 @@
 
       // 阶段 1: 3 步呼吸节律循环 (吸气 / 屏气 / 呼气)
       if (elapsed < breathDuration) {
-        const step = Math.min(2, Math.floor(elapsed / stepDuration));
-        const elapsedInStep = elapsed - (step * stepDuration);
-        const remainInStep = Math.max(1, Math.ceil(stepDuration - elapsedInStep));
+        let step = 0;
+        let remainInStep = 0;
+        let stepDuration = inhale;
+
+        if (elapsed < inhale) {
+          step = 0;
+          stepDuration = inhale;
+          remainInStep = Math.max(1, Math.ceil(inhale - elapsed));
+        } else if (elapsed < inhale + hold) {
+          step = 1;
+          stepDuration = hold;
+          remainInStep = Math.max(1, Math.ceil((inhale + hold) - elapsed));
+        } else {
+          step = 2;
+          stepDuration = exhale;
+          remainInStep = Math.max(1, Math.ceil(breathDuration - elapsed));
+        }
 
         setBreathStep(step, remainInStep, stepDuration);
 
@@ -456,9 +554,10 @@
       window.burstCelebrationParticles();
     }
 
-    // 切换至战报界面
+    // 切换至小绿苗战报界面
     UI.phaseQuote.classList.remove('active');
     UI.phaseBreathing.classList.remove('active');
+    if (UI.phaseIntro) UI.phaseIntro.classList.remove('active');
     UI.phaseResolution.classList.add('active');
 
     UI.statTodayCount.textContent = stats.today_count;
@@ -468,37 +567,12 @@
     UI.btnResistSuccess.disabled = true;
   }
 
-  // 选项 B: 我确实需要使用 (尊重自主权，深层链接前往)
-  function handleProceedApp() {
-    const stats = getStats();
-    stats.total_proceeded += 1;
-    saveStats(stats);
-
-    const settings = getSettings();
-    const preset = CAMOUFLAGE_PRESETS[settings.camouflage] || CAMOUFLAGE_PRESETS.bili;
-
-    // 尝试唤起真实 App，若无法唤起则引导前往 Web 移动端
-    const targetScheme = preset.appScheme;
-    const targetWeb = preset.webUrl;
-
-    const start = Date.now();
-    window.location.href = targetScheme;
-
-    // 降级回退机制 (如果 1.5 秒内仍在当前页面，说明未安装对应 App 或唤起失败，跳转网页版)
-    setTimeout(() => {
-      if (Date.now() - start < 2000) {
-        window.location.href = targetWeb;
-      }
-    }, 1200);
-  }
-
   // --- 8. 伪装主题切换逻辑 ---
   function applyCamouflage(key) {
     const preset = CAMOUFLAGE_PRESETS[key] || CAMOUFLAGE_PRESETS.bili;
     document.title = preset.name;
     UI.disguiseName.textContent = preset.name;
 
-    // 更新 Meta 标签
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) metaTheme.setAttribute('content', preset.themeColor);
 
@@ -508,25 +582,45 @@
       appDot.style.boxShadow = `0 0 8px ${preset.accentColor}`;
     }
 
-    // 动态同步 settings 弹窗中的激活态
     document.querySelectorAll('.theme-option-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.app === key);
     });
   }
 
-  // --- 9. 统计战报与图表渲染 ---
+  // --- 9. 呼吸时间设置与预设芯片同步 ---
+  function updateBreathSettingsUI() {
+    const s = getSettings();
+    const inh = s.breath_inhale;
+    const hld = s.breath_hold;
+    const exh = s.breath_exhale;
+    const total = inh + hld + exh;
+
+    if (UI.valInhale) UI.valInhale.textContent = inh;
+    if (UI.valHold) UI.valHold.textContent = hld;
+    if (UI.valExhale) UI.valExhale.textContent = exh;
+
+    if (UI.breathTotalPreview) {
+      UI.breathTotalPreview.textContent = `吸 ${inh}s · 屏 ${hld}s · 呼 ${exh}s (共 ${total}秒)`;
+    }
+
+    const presetStr = `${inh},${hld},${exh}`;
+    document.querySelectorAll('.preset-chip').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.preset === presetStr);
+    });
+  }
+
+  // --- 10. 统计战报渲染 ---
   function renderStatsModal() {
     const stats = getStats();
     document.getElementById('stats-total-resisted').textContent = stats.total_resisted;
     document.getElementById('stats-streak-days').textContent = stats.streak_days;
-    // 抢救专注时间估算 (每次 25 分钟)
+
     const savedMins = stats.total_resisted * 25;
     document.getElementById('stats-saved-time').textContent = savedMins >= 60 ? `${(savedMins / 60).toFixed(1)} 小时` : `${savedMins} 分钟`;
 
     const todayResistedEl = document.getElementById('stats-today-resisted');
     if (todayResistedEl) todayResistedEl.textContent = stats.today_count;
 
-    // 分类条形统计
     const container = document.getElementById('category-bars');
     container.innerHTML = '';
 
@@ -558,11 +652,33 @@
     }
   }
 
-  // --- 10. 事件绑定与初始化 ---
+  // --- 11. 回到桌面与切回应用自动重置机制 (核心需求 1) ---
+  function handleAppResume() {
+    // 当用户从桌面再次点开应用，或者从后台切回应用时：
+    // 1. 如果停留在小绿苗战报页 (resolution-screen)
+    // 2. 或者在后台离开超过 2 秒
+    // 自动重置到觉察与呼吸引导流程，无需手动刷新
+    const isAtResolution = UI.phaseResolution && UI.phaseResolution.classList.contains('active');
+    const wasAwayLongEnough = lastHiddenTimestamp > 0 && (Date.now() - lastHiddenTimestamp > 2000);
+
+    if (isAtResolution || wasAwayLongEnough) {
+      startIntroFlow();
+    }
+  }
+
+  // --- 12. 事件绑定与初始化 ---
   function bindEvents() {
     // 决策按钮
     UI.btnResistSuccess.addEventListener('click', handleResistSuccess);
-    UI.btnRestart.addEventListener('click', startInterventionFlow);
+    UI.btnRestart.addEventListener('click', startIntroFlow);
+
+    // Phase 0 引导卡片：点击立即开始调息
+    if (UI.btnStartBreath) {
+      UI.btnStartBreath.addEventListener('click', () => {
+        clearInterval(introTimer);
+        startBreathingFlow();
+      });
+    }
 
     // 模态弹窗开关
     const modals = {
@@ -579,6 +695,7 @@
       if (btn && modal) {
         btn.addEventListener('click', () => {
           if (modalId === 'modal-stats') renderStatsModal();
+          if (modalId === 'modal-settings') updateBreathSettingsUI();
           modal.classList.add('active');
         });
       }
@@ -586,14 +703,14 @@
 
     // 模态弹窗关闭
     document.querySelectorAll('.close-modal-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => {
         const modalId = btn.dataset.close;
         const target = document.getElementById(modalId);
         if (target) target.classList.remove('active');
       });
     });
 
-    // 点击模态外部遮罩关闭
+    // 点击遮罩关闭
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
@@ -621,9 +738,7 @@
     const vibrateSwitch = document.getElementById('switch-vibrate');
 
     function updateSoundUI(enabled) {
-      if (soundBtn) {
-        soundBtn.style.opacity = enabled ? '1' : '0.4';
-      }
+      if (soundBtn) soundBtn.style.opacity = enabled ? '1' : '0.4';
       if (soundSwitch) soundSwitch.checked = enabled;
     }
 
@@ -655,16 +770,42 @@
       });
     }
 
-    // 呼吸时间选择
-    document.querySelectorAll('.segment-btn').forEach(btn => {
+    // 3段呼吸步进调节按钮 (+ / -)
+    document.querySelectorAll('.step-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const duration = parseInt(btn.dataset.duration, 10);
-        document.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-
+        const action = btn.dataset.action; // 'inc' | 'dec'
+        const target = btn.dataset.target; // 'inhale' | 'hold' | 'exhale'
+        const key = `breath_${target}`;
         const s = getSettings();
-        s.breath_duration = duration;
+        let val = parseInt(s[key], 10) || 6;
+
+        if (action === 'inc') {
+          val = Math.min(15, val + 1);
+        } else if (action === 'dec') {
+          const minVal = target === 'hold' ? 0 : 2; // 屏息允许为0s
+          val = Math.max(minVal, val - 1);
+        }
+
+        s[key] = val;
         saveSettings(s);
+        updateBreathSettingsUI();
+        triggerHaptic([20]);
+      });
+    });
+
+    // 呼吸预设芯片 (6-6-6, 4-7-8, 4-4-4)
+    document.querySelectorAll('.preset-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const parts = chip.dataset.preset.split(',').map(n => parseInt(n, 10));
+        if (parts.length === 3) {
+          const s = getSettings();
+          s.breath_inhale = parts[0];
+          s.breath_hold = parts[1];
+          s.breath_exhale = parts[2];
+          saveSettings(s);
+          updateBreathSettingsUI();
+          triggerHaptic([25]);
+        }
       });
     });
 
@@ -679,7 +820,7 @@
       });
     });
 
-    // 清除数据
+    // 清除统计数据
     const resetBtn = document.getElementById('btn-reset-stats');
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
@@ -702,14 +843,31 @@
       });
     }
 
-    // 检测是否已为独立 PWA 全屏运行
     const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
     if (isStandalone || sessionStorage.getItem('zen_pwa_banner_dismissed')) {
       if (banner) banner.classList.add('hidden');
     }
+
+    // 生命周期事件监听：切回前台时自动重置 (针对手机端桌面回到应用)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        lastHiddenTimestamp = Date.now();
+      } else if (document.visibilityState === 'visible') {
+        handleAppResume();
+        lastHiddenTimestamp = 0;
+      }
+    });
+
+    window.addEventListener('pageshow', () => {
+      handleAppResume();
+    });
+
+    window.addEventListener('focus', () => {
+      handleAppResume();
+    });
   }
 
-  // --- 11. Service Worker 注册 ---
+  // --- 13. Service Worker 注册 ---
   function registerServiceWorker() {
     if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
       navigator.serviceWorker.register('sw.js')
@@ -728,22 +886,17 @@
     const settings = getSettings();
     applyCamouflage(settings.camouflage);
 
-    // 初始化控制开关状态
     const soundSwitch = document.getElementById('switch-sound');
     if (soundSwitch) soundSwitch.checked = settings.sound;
     const vibrateSwitch = document.getElementById('switch-vibrate');
     if (vibrateSwitch) vibrateSwitch.checked = settings.vibrate;
 
-    // 选中对应呼吸时长按钮
-    document.querySelectorAll('.segment-btn').forEach(btn => {
-      btn.classList.toggle('active', parseInt(btn.dataset.duration, 10) === settings.breath_duration);
-    });
-
+    updateBreathSettingsUI();
     bindEvents();
     registerServiceWorker();
 
-    // 开启第一轮干预
-    startInterventionFlow();
+    // 开启第一轮：先显示觉察引导 (Phase 0)
+    startIntroFlow();
   });
 
 })();

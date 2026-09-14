@@ -89,8 +89,35 @@
       <!-- Center Stage: Dynamic Content based on phase -->
       <section class="center-stage">
         
+        <!-- Phase 0: Mindful Awareness & Grounding Intro -->
+        <div id="phase-0-intro" class="phase-container active">
+          <div class="intro-card">
+            <div class="intro-badge">
+              <span class="pulse-dot"></span>
+              <span>觉察时刻 · 暂停本能</span>
+            </div>
+
+            <h2 class="intro-heading">刚刚，你的手指下意识点开了短视频</h2>
+            
+            <p class="intro-body">
+              <strong>别自责</strong>，这只是大脑面对枯燥或焦虑时的自动化习惯反射。<br><br>
+              现在停顿一下。接下来，我们将通过一次正念深呼吸，把注意力的主控权重新交还给理智的前额叶。
+            </p>
+
+            <div class="intro-action-wrap">
+              <button id="btn-start-breath" class="intro-start-btn">
+                <span>准备好了，开始调息</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <span id="intro-countdown-tip" class="intro-countdown-tip">3 秒后将自动开始...</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Phase 1: Breathing Ring & Grounding Circle -->
-        <div id="phase-1-breathing" class="phase-container active">
+        <div id="phase-1-breathing" class="phase-container">
           <div class="breathing-stage">
             <div class="ring ring-outer"></div>
             <div class="ring ring-middle"></div>
@@ -327,11 +354,46 @@
           </div>
 
           <div class="settings-group">
-            <label class="settings-label">正念深呼吸节奏模式</label>
-            <div class="segmented-control" id="breath-duration-selector">
-              <button class="segment-btn active" data-duration="18">18秒 (吸6s·屏6s·呼6s)</button>
-              <button class="segment-btn" data-duration="12">12秒 (4-4-4 快速)</button>
-              <button class="segment-btn" data-duration="24">24秒 (8-8-8 深度)</button>
+            <div class="settings-header-row">
+              <label class="settings-label">正念深呼吸节律自定义</label>
+              <span id="breath-total-preview" class="settings-tag-preview">吸 6s · 屏 6s · 呼 6s (共 18秒)</span>
+            </div>
+
+            <!-- Presets -->
+            <div class="preset-chips">
+              <button type="button" class="preset-chip active" data-preset="6,6,6">6-6-6 黄金自控</button>
+              <button type="button" class="preset-chip" data-preset="4,7,8">4-7-8 深度安神</button>
+              <button type="button" class="preset-chip" data-preset="4,4,4">4-4-4 箱式呼吸</button>
+            </div>
+
+            <!-- 3 Individual Stepper Controls -->
+            <div class="breath-steppers">
+              <div class="stepper-item">
+                <span class="stepper-label">① 吸气时间</span>
+                <div class="stepper-control">
+                  <button type="button" class="step-btn" data-action="dec" data-target="inhale">-</button>
+                  <span class="step-val" id="val-inhale">6</span><span class="step-unit">秒</span>
+                  <button type="button" class="step-btn" data-action="inc" data-target="inhale">+</button>
+                </div>
+              </div>
+
+              <div class="stepper-item">
+                <span class="stepper-label">② 屏息时间</span>
+                <div class="stepper-control">
+                  <button type="button" class="step-btn" data-action="dec" data-target="hold">-</button>
+                  <span class="step-val" id="val-hold">6</span><span class="step-unit">秒</span>
+                  <button type="button" class="step-btn" data-action="inc" data-target="hold">+</button>
+                </div>
+              </div>
+
+              <div class="stepper-item">
+                <span class="stepper-label">③ 呼气时间</span>
+                <div class="stepper-control">
+                  <button type="button" class="step-btn" data-action="dec" data-target="exhale">-</button>
+                  <span class="step-val" id="val-exhale">6</span><span class="step-unit">秒</span>
+                  <button type="button" class="step-btn" data-action="inc" data-target="exhale">+</button>
+                </div>
+              </div>
             </div>
           </div>
 
